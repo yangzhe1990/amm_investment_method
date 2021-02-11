@@ -1,0 +1,12 @@
+[package]
+name = "invest-strategy"
+version = "0.1.0"
+license = "GPL-3.0"
+description = "Invest strategy"
+
+[dependencies]
+csv = "1.1"
+lazy_static = "1.4"
+reflection = "0.1"
+serde = "1.0"
+serde_derive = "1.0"
