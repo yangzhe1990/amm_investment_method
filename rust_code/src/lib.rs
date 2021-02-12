@@ -10,5 +10,16 @@ extern crate csv;
 extern crate serde_derive;
 extern crate serde;
 
+pub mod amm;
+pub mod cost_average;
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct Row {
+    date: String,
+    price: f64,
+}
+
+type BuyLogs = Vec<(f64, f64)>;
+
 #[cfg(test)]
 mod tests;
