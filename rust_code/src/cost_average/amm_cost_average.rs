@@ -12,7 +12,6 @@ pub struct AMMCostAverage {
     cash_invested: f64,
     coins_invested: f64,
 
-    cash_reserve: f64,
     est_dca_cash_use_ratio: f64,
     amount_round: f64,
     imaginary_amm_ticks_to_expire: usize,
@@ -49,7 +48,6 @@ impl AMMCostAverage {
             imaginary_amm_ticks_to_expire,
             tick: 0,
 
-            cash_reserve: 0.0,
             amount_round: 0.0,
 
             amms: Default::default(),
@@ -61,17 +59,6 @@ impl AMMCostAverage {
 
     fn basic_cash_per_day(&self) -> f64 {
         self.amount_round / (DAYS_PER_ROUND as f64)
-    }
-
-    fn cash_unused(&self) -> f64 {
-        // Expected to invest - already invested - (borrowed - borrow_repay).
-        // self.cash_reserve = expected to invest + borrowed.
-        let mut cash_unused = self.cash_reserve;
-        for amm in &self.amms {
-            cash_unused += amm.cash;
-        }
-
-        cash_unused
     }
 
     fn past_amm_cash_utilization(&self) -> (f64, f64, f64, f64) {
@@ -105,8 +92,6 @@ impl AMMCostAverage {
         let cash_day = self.basic_cash_per_day() / (1.0 - self.rebalance_cash_ratio)
             * self.est_dca_cash_use_ratio;
 
-        self.cash_reserve += self.basic_cash_per_day() - cash_day;
-
         self.amm_put_cash.push(cash_day);
         cash_day
     }
@@ -115,7 +100,6 @@ impl AMMCostAverage {
 impl CostAverageMethodTrait for AMMCostAverage {
     fn set_supply(&mut self, amount: f64) {
         self.amount_round = amount;
-        self.cash_reserve = 0.0;
     }
     fn start_new_round(&mut self, ticks: usize) {
         assert_eq!(ticks, DAYS_PER_ROUND);
@@ -129,7 +113,6 @@ impl CostAverageMethodTrait for AMMCostAverage {
                 self.last_amm_uninvested = cash - basic_cash_per_day;
                 self.imaginary_total_amm_returned_cash += cash;
                 self.finished_amms += 1;
-                self.cash_reserve += cash;
 
                 // put the money and coins back.
                 amm.cash = cash;

@@ -193,7 +193,7 @@ fn test_tsv_file_read() -> Result<(), Box<dyn std::error::Error>> {
         lowest_date_index,
         begin_total_asset - cash,
         begin_total_asset,
-        &mut AMMCostAverage::new(0.75, 0.8, REBALANCE_PERCENT_STEPS, 150),
+        &mut AMMCostAverage::new(0.75, 0.9, REBALANCE_PERCENT_STEPS, 150),
         &rows,
     );
     // Try AMM dollar average auto adjust.
@@ -205,13 +205,13 @@ fn test_tsv_file_read() -> Result<(), Box<dyn std::error::Error>> {
         lowest_date_index,
         begin_total_asset - cash,
         begin_total_asset,
-        &mut AMMCostAverageAuto::new(0.817, 0.8, REBALANCE_PERCENT_STEPS, 150, 1.0 / 30.0),
+        &mut AMMCostAverageAuto::new(0.605, 0.9, REBALANCE_PERCENT_STEPS, 150, 1.0 / 10.0),
         &rows,
     );
     coins = amm_coins;
     println!("\nUse AMM dollar average\n");
 
-    Fluctuation::new(&rows[exit_index..bull_market_index], &[15, 30, 60, 90, 120, 150]).log();
+    // Fluctuation::new(&rows[exit_index..bull_market_index], &[15, 30, 60, 90, 120, 150]).log();
 
     // Rebalance to 1/4 cash, 3/4 coins.
     let bull_start_price = rows[bull_market_index].price;

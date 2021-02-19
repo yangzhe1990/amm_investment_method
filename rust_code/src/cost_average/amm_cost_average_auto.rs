@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 
 pub struct AMMCostAverageAuto {
     amm_put_cash: Vec<f64>,
+    adjusts: Vec<f64>,
     total_amm_returned_cash: f64,
     finished_amms: usize,
     last_amm_uninvested: f64,
@@ -41,6 +42,7 @@ impl AMMCostAverageAuto {
     ) -> Self {
         Self {
             amm_put_cash: vec![],
+            adjusts: vec![],
             total_amm_returned_cash: 0.0,
             finished_amms: 0,
             last_amm_uninvested: 0.0,
@@ -138,8 +140,7 @@ impl AMMCostAverageAuto {
             assert_eq!(self.finished_amms, self.tick - self.amm_ticks_to_expire + 1);
             let (_cash_put, finished_amm_cash_invested, average_invested, over_invest_ratio) =
                 self.past_amm_cash_utilization();
-            let expected_spending =
-                self.basic_cash_per_day() * (self.tick - self.amm_ticks_to_expire + 1) as f64;
+            let expected_spending = self.basic_cash_per_day() * self.finished_amms as f64;
             let daily_diff = self.basic_cash_per_day() - average_invested;
             let difference = expected_spending - finished_amm_cash_invested;
 
@@ -148,21 +149,23 @@ impl AMMCostAverageAuto {
             // bear market we shouldn't invest too much if the price is kept strong, so we try not
             // to allocate too much budget for the new daily AMM. If the price falls immediately,
             // the existing AMM will buy the dip.
-            let adjust_1 = difference * self.past_uninvested_reinvest_daily_percentage;
-            let adjust_2 = self.basic_cash_per_day()
+            let adjust_2 = difference * self.past_uninvested_reinvest_daily_percentage;
+            let adjust_1 = self.basic_cash_per_day()
                 * (1.0 / (over_invest_ratio * self.est_dca_cash_use_ratio) - 1.0);
-            let adjust = adjust_1 + adjust_2;
+            let adjust = if adjust_2 > 0.0 { adjust_2 } else { 0.0 };
+            self.adjusts.push(adjust);
 
             cash_day += adjust / (1.0 - self.rebalance_cash_ratio) * self.est_dca_cash_use_ratio;
 
             println!(
-                "est_dca_cash_use_ratio {}, expected {}, total past uninvested {}, price {}, \
+                "tick {}, price {}, est_dca_cash_use_ratio {}, expected {}, total past uninvested {}, \
                  basic_cash_per_day {}, daily average invested {}, daily diff {}, \
                  adjustment {} = {} + {}, cash_day {}",
+                self.tick,
+                self.last_price,
                 self.est_dca_cash_use_ratio,
                 1.0 / over_invest_ratio,
                 difference,
-                self.last_price,
                 self.basic_cash_per_day(),
                 average_invested,
                 daily_diff,
@@ -220,6 +223,15 @@ impl CostAverageMethodTrait for AMMCostAverageAuto {
             self.rebalance_cash_ratio,
             self.rebalance_step_percentage,
         ));
+        if self.amms.len() == 1 {
+            println!(
+                "amm 0 cash put {}, immediate buying {}, price {}, cash_ratio {}",
+                amm_cash,
+                amm_cash * (1.0 - self.rebalance_cash_ratio),
+                price,
+                self.rebalance_cash_ratio
+            );
+        }
 
         let mut i = self.amms.len();
         while i > 0 {
